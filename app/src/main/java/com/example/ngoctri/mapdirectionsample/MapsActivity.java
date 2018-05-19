@@ -250,24 +250,5 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    private void displayLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED){
-            return;
-        }
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        if (mLastLocation!=null){
-            //Update Firebase
-            locations.child(FirebaseAuth.getInstance().getCurrentUser().getUid())
-                    .setValue(new Tracking(FirebaseAuth.getInstance().getCurrentUser().getEmail()
-                            ,FirebaseAuth.getInstance().getCurrentUser().getUid()
-                            ,String.valueOf(mLastLocation.getLatitude())
-                            ,String.valueOf(mLastLocation.getLongitude()))
-                    );
-        }
-        else{
-//            Toast.makeText(this, "Couldn't get the location", Toast.LENGTH_SHORT).show();
-            Log.d("TEST","Couldn't get the location");
-        }
-    }
+
 }
