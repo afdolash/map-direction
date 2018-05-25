@@ -2,8 +2,11 @@ package com.example.ngoctri.mapdirectionsample;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -31,15 +34,23 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
     private static final int LOCATION_REQUEST = 500;
+    private static final int REQUEST_LOCATION = 1;
+    private static final long DELAY_PEROID = 5000;
     ArrayList<LatLng> listPoints;
+    LocationManager locationManager;
+    String lattitude,longitude;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -104,7 +115,72 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Log.e("MISSING","GPS_PROVIDER");
 
+        } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Log.d("SUCCESS","TIMER");
+            Timer timerObj = new Timer();
+            TimerTask timerTaskObj = new TimerTask() {
+                public void run() {
+                    getLocation();
+                }
+            };
+            timerObj.schedule(timerTaskObj, 0,DELAY_PEROID);
+        }
+
+
+
+
+    }
+
+
+    private void getLocation() {
+        if (ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission
+                (MapsActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(MapsActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION);
+
+        } else {
+
+            Location location2 = locationManager.getLastKnownLocation(LocationManager. PASSIVE_PROVIDER);
+            Location location1 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+
+            if (location != null) {
+                double latti = location.getLatitude();
+                double longi = location.getLongitude();
+                lattitude = String.valueOf(latti);
+                longitude = String.valueOf(longi);
+
+                Log.d("current location","Lattitude = " + lattitude
+                        + "\n" + "Longitude = " + longitude);
+            }
+            if (location1 != null) {
+                double latti = location1.getLatitude();
+                double longi = location1.getLongitude();
+                lattitude = String.valueOf(latti);
+                longitude = String.valueOf(longi);
+
+                Log.d("current location1","Lattitude = " + lattitude
+                        + "\n" + "Longitude = " + longitude);
+            }
+            if (location2 != null) {
+                double latti = location2.getLatitude();
+                double longi = location2.getLongitude();
+                lattitude = String.valueOf(latti);
+                longitude = String.valueOf(longi);
+
+                Log.d("current location2","Lattitude = " + lattitude
+                        + "\n" + "Longitude = " + longitude);
+            }else{
+
+                Toast.makeText(this,"Unble to Trace your location",Toast.LENGTH_SHORT).show();
+
+            }
+        }
     }
 
     private String getRequestUrl(LatLng origin, LatLng dest) {
