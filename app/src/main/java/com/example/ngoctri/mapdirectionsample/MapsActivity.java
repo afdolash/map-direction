@@ -13,6 +13,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -50,6 +51,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     ArrayList<LatLng> listPoints;
     LocationManager locationManager;
     String lattitude,longitude;
+    ArrayList<Steps> stepslist;
+    int radius=10;
+    int indexNextTurn =1;
+    private TextView tvStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +64,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        tvStatus = findViewById(R.id.tv_status);
         listPoints = new ArrayList<>();
     }
     @Override
@@ -70,8 +76,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             return;
         }
         mMap.setMyLocationEnabled(true);
-//        Log.d("lokasi user", String.valueOf(mMap.getMyLocation().getLatitude()));
 
+        setMarker();
+
+    }
+
+    private void setMarker() {
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng latLng) {
@@ -100,10 +110,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     String url = getRequestUrl(listPoints.get(0), listPoints.get(1));
                     TaskRequestDirections taskRequestDirections = new TaskRequestDirections();
                     taskRequestDirections.execute(url);
+
+                    loopLocation();
                 }
             }
         });
+    }
 
+    private void loopLocation() {
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.e("MISSING","GPS_PROVIDER");
@@ -114,13 +128,61 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             TimerTask timerTaskObj = new TimerTask() {
                 public void run() {
                     getLocation();
+                    if (stepslist!=null){
+                        countDistance();
+////                        Double b = -7.45 + 54.352662;
+////
+////                        Log.d("b", String.valueOf(b));
+////                        Log.d("size lat", String.valueOf(stepslist.get(0).getEnd_location().getLat()));
+////                        Log.d("current location",
+////                                "Lattitude = " + lattitude+ "\n" +
+////                                        "Longitude = " + longitude);
+                    }
                 }
             };
             timerObj.schedule(timerTaskObj, 0,DELAY_PEROID);
         }
+    }
 
+    private void countDistance() {
+        Double currLat = Double.valueOf(lattitude);
+        Double currLng = Double.valueOf(longitude);
+        Double crossLat = stepslist.get(indexNextTurn).getStart_location().getLat();
+        Double crossLng = stepslist.get(indexNextTurn).getStart_location().getLng();
+        Log.d("x1", String.valueOf(currLat));
+        Log.d("y1", String.valueOf(currLng));
+        Log.d("x2", String.valueOf(crossLat));
+        Log.d("y2", String.valueOf(crossLng));
+        Log.d("pow", String.valueOf(Math.pow(4,5)));
+        Double distance2point = Math.sqrt((Math.pow((crossLat-currLat),2)+Math.pow((crossLng-currLng),2)));
 
+//        Toast.makeText(MapsActivity.this,
+//                "ket : "+stepslist.get(indexNextTurn).getHtml_instructions()
+//                        +"\ncurrlat  : "+currLat
+//                        +"\ncurrlng  : "+currLng
+//                        +"\ncrosslat : "+crossLat
+//                        +"\ncrosslng : "+crossLat,
+//                Toast.LENGTH_SHORT);
 
+//        tvStatus.setText("ket : "+stepslist.get(indexNextTurn).getHtml_instructions()
+//                +"\ncurrlat  : "+currLat
+//                +"\ncurrlng  : "+currLng
+//                +"\ncrosslat : "+crossLat
+//                +"\ncrosslng : "+crossLng);
+
+        Log.d("kirim",
+                "ket : "+stepslist.get(indexNextTurn).getHtml_instructions()
+                +"\ncurrlat  : "+currLat
+                +"\ncurrlng  : "+currLng
+                +"\ncrosslat : "+crossLat
+                +"\ncrosslng : "+crossLng
+        );
+
+//        if (distance2point<=0.00045){
+        if (distance2point<=0.000008*radius){
+            indexNextTurn++;
+        }
+//        Log.d("distance2point", "countDistance: "+distance2point.toString());
 
     }
 
@@ -144,8 +206,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 lattitude = String.valueOf(latti);
                 longitude = String.valueOf(longi);
 
-                Log.d("current location","Lattitude = " + lattitude
-                        + "\n" + "Longitude = " + longitude);
+//                Log.d("current location","Lattitude = " + lattitude
+//                        + "\n" + "Longitude = " + longitude);
             }
             if (location1 != null) {
                 double latti = location1.getLatitude();
@@ -153,8 +215,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 lattitude = String.valueOf(latti);
                 longitude = String.valueOf(longi);
 
-                Log.d("current location1","Lattitude = " + lattitude
-                        + "\n" + "Longitude = " + longitude);
+//                Log.d("current location1","Lattitude = " + lattitude
+//                        + "\n" + "Longitude = " + longitude);
             }
             if (location2 != null) {
                 double latti = location2.getLatitude();
@@ -162,8 +224,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 lattitude = String.valueOf(latti);
                 longitude = String.valueOf(longi);
 
-                Log.d("current location2","Lattitude = " + lattitude
-                        + "\n" + "Longitude = " + longitude);
+//                Log.d("current location2","Lattitude = " + lattitude
+//                        + "\n" + "Longitude = " + longitude);
             }else{
 
                 Toast.makeText(this,"Unble to Trace your location",Toast.LENGTH_SHORT).show();
@@ -275,7 +337,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 jsonObject = new JSONObject(strings[0]);
                 DirectionsParser directionsParser = new DirectionsParser();
                 routes = directionsParser.parse(jsonObject);
-                ArrayList<Steps> stepslist = directionsParser.getStepslist();
+                stepslist = directionsParser.getStepslist();
                 stepslist.size();
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -318,4 +380,54 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
 
+    private class ModelOutput {
+        private String keterangan;
+        private Double latSekarang;
+        private Double lngSekarang;
+        private Double latPersimpangan;
+        private Double lngPersimpangan;
+
+        public ModelOutput() {
+        }
+
+        public String getKeterangan() {
+            return keterangan;
+        }
+
+        public void setKeterangan(String keterangan) {
+            this.keterangan = keterangan;
+        }
+
+        public Double getLatSekarang() {
+            return latSekarang;
+        }
+
+        public void setLatSekarang(Double latSekarang) {
+            this.latSekarang = latSekarang;
+        }
+
+        public Double getLngSekarang() {
+            return lngSekarang;
+        }
+
+        public void setLngSekarang(Double lngSekarang) {
+            this.lngSekarang = lngSekarang;
+        }
+
+        public Double getLatPersimpangan() {
+            return latPersimpangan;
+        }
+
+        public void setLatPersimpangan(Double latPersimpangan) {
+            this.latPersimpangan = latPersimpangan;
+        }
+
+        public Double getLngPersimpangan() {
+            return lngPersimpangan;
+        }
+
+        public void setLngPersimpangan(Double lngPersimpangan) {
+            this.lngPersimpangan = lngPersimpangan;
+        }
+    }
 }
