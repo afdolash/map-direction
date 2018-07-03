@@ -8,11 +8,13 @@ import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -50,6 +52,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     ArrayList<LatLng> listPoints;
     LocationManager locationManager;
     String lattitude,longitude;
+    ArrayList<Steps> stepslist;
+    int radius=10;
+    int indexNextTurn =1;
+    private TextView tvStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +65,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+        tvStatus = findViewById(R.id.tv_status);
         listPoints = new ArrayList<>();
     }
     @Override
@@ -70,8 +77,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             return;
         }
         mMap.setMyLocationEnabled(true);
-//        Log.d("lokasi user", String.valueOf(mMap.getMyLocation().getLatitude()));
 
+        setMarker();
+    }
+
+    private void setMarker() {
         mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(LatLng latLng) {
@@ -100,30 +110,54 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     String url = getRequestUrl(listPoints.get(0), listPoints.get(1));
                     TaskRequestDirections taskRequestDirections = new TaskRequestDirections();
                     taskRequestDirections.execute(url);
+                    loopLocation();
                 }
             }
         });
+    }
 
+    private void loopLocation() {
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.e("MISSING","GPS_PROVIDER");
 
         } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.d("SUCCESS","TIMER");
+
             Timer timerObj = new Timer();
             TimerTask timerTaskObj = new TimerTask() {
                 public void run() {
                     getLocation();
+                    if (stepslist!=null){
+                        countDistance();
+                    }
                 }
             };
             timerObj.schedule(timerTaskObj, 0,DELAY_PEROID);
         }
-
-
-
-
     }
 
+    private void countDistance() {
+        Double currLat = Double.valueOf(lattitude);
+        Double currLng = Double.valueOf(longitude);
+        Double crossLat = stepslist.get(indexNextTurn).getStart_location().getLat();
+        Double crossLng = stepslist.get(indexNextTurn).getStart_location().getLng();
+
+        Double distance2point = Math.sqrt((Math.pow((crossLat-currLat),2)+Math.pow((crossLng-currLng),2)));
+
+        Log.d("kirim",
+                "ket : "+stepslist.get(indexNextTurn).getHtml_instructions()
+                +"\ncurrlat  : "+currLat
+                +"\ncurrlng  : "+currLng
+                +"\ncrosslat : "+crossLat
+                +"\ncrosslng : "+crossLng
+        );
+
+        if (distance2point<=0.000008*radius){
+            indexNextTurn++;
+        }
+
+    }
 
     private void getLocation() {
         if (ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -143,9 +177,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 double longi = location.getLongitude();
                 lattitude = String.valueOf(latti);
                 longitude = String.valueOf(longi);
-
-                Log.d("current location","Lattitude = " + lattitude
-                        + "\n" + "Longitude = " + longitude);
             }
             if (location1 != null) {
                 double latti = location1.getLatitude();
@@ -153,21 +184,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 lattitude = String.valueOf(latti);
                 longitude = String.valueOf(longi);
 
-                Log.d("current location1","Lattitude = " + lattitude
-                        + "\n" + "Longitude = " + longitude);
             }
             if (location2 != null) {
                 double latti = location2.getLatitude();
                 double longi = location2.getLongitude();
                 lattitude = String.valueOf(latti);
                 longitude = String.valueOf(longi);
-
-                Log.d("current location2","Lattitude = " + lattitude
-                        + "\n" + "Longitude = " + longitude);
-            }else{
-
+            }
+            else{
                 Toast.makeText(this,"Unble to Trace your location",Toast.LENGTH_SHORT).show();
-
             }
         }
     }
@@ -275,7 +300,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 jsonObject = new JSONObject(strings[0]);
                 DirectionsParser directionsParser = new DirectionsParser();
                 routes = directionsParser.parse(jsonObject);
-                ArrayList<Steps> stepslist = directionsParser.getStepslist();
+                stepslist = directionsParser.getStepslist();
                 stepslist.size();
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -316,6 +341,4 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         }
     }
-
-
 }
