@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -78,7 +79,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setMyLocationEnabled(true);
 
         setMarker();
-
     }
 
     private void setMarker() {
@@ -110,7 +110,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     String url = getRequestUrl(listPoints.get(0), listPoints.get(1));
                     TaskRequestDirections taskRequestDirections = new TaskRequestDirections();
                     taskRequestDirections.execute(url);
-
                     loopLocation();
                 }
             }
@@ -124,19 +123,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.d("SUCCESS","TIMER");
+
             Timer timerObj = new Timer();
             TimerTask timerTaskObj = new TimerTask() {
                 public void run() {
                     getLocation();
                     if (stepslist!=null){
                         countDistance();
-////                        Double b = -7.45 + 54.352662;
-////
-////                        Log.d("b", String.valueOf(b));
-////                        Log.d("size lat", String.valueOf(stepslist.get(0).getEnd_location().getLat()));
-////                        Log.d("current location",
-////                                "Lattitude = " + lattitude+ "\n" +
-////                                        "Longitude = " + longitude);
                     }
                 }
             };
@@ -149,26 +142,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Double currLng = Double.valueOf(longitude);
         Double crossLat = stepslist.get(indexNextTurn).getStart_location().getLat();
         Double crossLng = stepslist.get(indexNextTurn).getStart_location().getLng();
-        Log.d("x1", String.valueOf(currLat));
-        Log.d("y1", String.valueOf(currLng));
-        Log.d("x2", String.valueOf(crossLat));
-        Log.d("y2", String.valueOf(crossLng));
-        Log.d("pow", String.valueOf(Math.pow(4,5)));
+
         Double distance2point = Math.sqrt((Math.pow((crossLat-currLat),2)+Math.pow((crossLng-currLng),2)));
-
-//        Toast.makeText(MapsActivity.this,
-//                "ket : "+stepslist.get(indexNextTurn).getHtml_instructions()
-//                        +"\ncurrlat  : "+currLat
-//                        +"\ncurrlng  : "+currLng
-//                        +"\ncrosslat : "+crossLat
-//                        +"\ncrosslng : "+crossLat,
-//                Toast.LENGTH_SHORT);
-
-//        tvStatus.setText("ket : "+stepslist.get(indexNextTurn).getHtml_instructions()
-//                +"\ncurrlat  : "+currLat
-//                +"\ncurrlng  : "+currLng
-//                +"\ncrosslat : "+crossLat
-//                +"\ncrosslng : "+crossLng);
 
         Log.d("kirim",
                 "ket : "+stepslist.get(indexNextTurn).getHtml_instructions()
@@ -178,14 +153,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 +"\ncrosslng : "+crossLng
         );
 
-//        if (distance2point<=0.00045){
         if (distance2point<=0.000008*radius){
             indexNextTurn++;
         }
-//        Log.d("distance2point", "countDistance: "+distance2point.toString());
 
     }
-
 
     private void getLocation() {
         if (ActivityCompat.checkSelfPermission(MapsActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -205,9 +177,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 double longi = location.getLongitude();
                 lattitude = String.valueOf(latti);
                 longitude = String.valueOf(longi);
-
-//                Log.d("current location","Lattitude = " + lattitude
-//                        + "\n" + "Longitude = " + longitude);
             }
             if (location1 != null) {
                 double latti = location1.getLatitude();
@@ -215,21 +184,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 lattitude = String.valueOf(latti);
                 longitude = String.valueOf(longi);
 
-//                Log.d("current location1","Lattitude = " + lattitude
-//                        + "\n" + "Longitude = " + longitude);
             }
             if (location2 != null) {
                 double latti = location2.getLatitude();
                 double longi = location2.getLongitude();
                 lattitude = String.valueOf(latti);
                 longitude = String.valueOf(longi);
-
-//                Log.d("current location2","Lattitude = " + lattitude
-//                        + "\n" + "Longitude = " + longitude);
-            }else{
-
+            }
+            else{
                 Toast.makeText(this,"Unble to Trace your location",Toast.LENGTH_SHORT).show();
-
             }
         }
     }
@@ -376,58 +339,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 Toast.makeText(getApplicationContext(), "Direction not found!", Toast.LENGTH_SHORT).show();
             }
 
-        }
-    }
-
-
-    private class ModelOutput {
-        private String keterangan;
-        private Double latSekarang;
-        private Double lngSekarang;
-        private Double latPersimpangan;
-        private Double lngPersimpangan;
-
-        public ModelOutput() {
-        }
-
-        public String getKeterangan() {
-            return keterangan;
-        }
-
-        public void setKeterangan(String keterangan) {
-            this.keterangan = keterangan;
-        }
-
-        public Double getLatSekarang() {
-            return latSekarang;
-        }
-
-        public void setLatSekarang(Double latSekarang) {
-            this.latSekarang = latSekarang;
-        }
-
-        public Double getLngSekarang() {
-            return lngSekarang;
-        }
-
-        public void setLngSekarang(Double lngSekarang) {
-            this.lngSekarang = lngSekarang;
-        }
-
-        public Double getLatPersimpangan() {
-            return latPersimpangan;
-        }
-
-        public void setLatPersimpangan(Double latPersimpangan) {
-            this.latPersimpangan = latPersimpangan;
-        }
-
-        public Double getLngPersimpangan() {
-            return lngPersimpangan;
-        }
-
-        public void setLngPersimpangan(Double lngPersimpangan) {
-            this.lngPersimpangan = lngPersimpangan;
         }
     }
 }
