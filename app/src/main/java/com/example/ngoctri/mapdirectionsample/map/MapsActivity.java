@@ -1,14 +1,20 @@
-package com.example.ngoctri.mapdirectionsample;
+package com.example.ngoctri.mapdirectionsample.map;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -17,7 +23,10 @@ import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
+import com.example.ngoctri.mapdirectionsample.R;
+import com.example.ngoctri.mapdirectionsample.bluetooth.BtDeviceAdapter;
+import com.example.ngoctri.mapdirectionsample.utils.DirectionsParser;
+import com.example.ngoctri.mapdirectionsample.utils.Steps;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
@@ -33,41 +42,111 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.UUID;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
-    private GoogleMap mMap;
+    public static final String MAP_TAG = MapsActivity.class.getSimpleName();
+
+    // UUID service - This is the type of Bluetooth device that the BT module is
+    // It is very likely yours will be the same, if not google UUID for your manufacturer
+    private static final UUID MY_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
     private static final int LOCATION_REQUEST = 500;
     private static final int REQUEST_LOCATION = 1;
-    private static final long DELAY_PEROID = 5000;
-    ArrayList<LatLng> listPoints;
-    LocationManager locationManager;
-    String lattitude,longitude;
-    ArrayList<Steps> stepslist;
-    int radius=10;
-    int indexNextTurn =1;
-    private TextView tvStatus;
+    private static final long DELAY_PEROID = 500;
+
+    private GoogleMap mMap;
+
+    private ArrayList<LatLng> listPoints;
+    private ArrayList<Steps> stepslist;
+
+    private LocationManager locationManager;
+    private String lattitude,longitude;
+
+    int radius = 10;
+    int indexNextTurn = 1;
+
+    private BluetoothAdapter bluetoothAdapter;
+    private BluetoothSocket bluetoothSocket;
+    private String bluetoothAddress = null;
+    private OutputStream outputStream;
+
+    private Timer timerObj = new Timer();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-        tvStatus = findViewById(R.id.tv_status);
+
         listPoints = new ArrayList<>();
+
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        checkBTState();
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Intent intent = getIntent();
+        bluetoothAddress = intent.getStringExtra(BtDeviceAdapter.EXTRA_DEVICE_ADDRESS);
+        BluetoothDevice device = bluetoothAdapter.getRemoteDevice(bluetoothAddress);
+
+        try {
+            bluetoothSocket = device.createRfcommSocketToServiceRecord(MY_UUID);
+        } catch (IOException e1) {
+            Toast.makeText(this, "Could not create bluetooth socket.", Toast.LENGTH_SHORT).show();
+        }
+
+        try {
+            bluetoothSocket.connect();
+        } catch (IOException e) {
+            try {
+                bluetoothSocket.close();
+            } catch (IOException e2) {
+                Toast.makeText(getBaseContext(), "Could not close Bluetooth socket.", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        try {
+            outputStream = bluetoothSocket.getOutputStream();
+//            timerObj.cancel();
+//
+//            if (listPoints.size() == 2) {
+//                //Create the URL to get request from first marker to second marker
+//                String url = getRequestUrl(listPoints.get(0), listPoints.get(1));
+//                TaskRequestDirections taskRequestDirections = new TaskRequestDirections();
+//                taskRequestDirections.execute(url);
+//                loopLocation();
+//            }
+        } catch (IOException e) {
+            Toast.makeText(getBaseContext(), "Could not create bluetooth outstream.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            outputStream.close();
+            bluetoothSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, e.toString(), Toast.LENGTH_SHORT).show();
+        }
+        super.onDestroy();
+    }
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -79,6 +158,41 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setMyLocationEnabled(true);
 
         setMarker();
+    }
+
+
+    private void checkBTState() {
+        if(bluetoothAdapter == null) {
+            Toast.makeText(this, "Device does not support bluetooth.", Toast.LENGTH_SHORT).show();
+            finish();
+        } else {
+            if (!bluetoothAdapter.isEnabled()) {
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, 1);
+            }
+        }
+    }
+
+    public boolean sendData(String message) {
+        byte[] msgBuffer = message.getBytes();
+
+        try {
+            outputStream.write(msgBuffer);
+            Log.i("Send Data", "Sending...");
+            return true;
+        } catch (IOException e) {
+
+            try {
+                timerObj.cancel();
+            } catch (Exception ex) {
+                Log.e("Timer", "Timer was canceled");
+            }
+
+            Toast.makeText(this, "Device not found.", Toast.LENGTH_SHORT).show();
+            Log.e("Send Data", "Device not found");
+            finish();
+            return false;
+        }
     }
 
     private void setMarker() {
@@ -124,16 +238,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.d("SUCCESS","TIMER");
 
-            Timer timerObj = new Timer();
+            timerObj = new Timer();
             TimerTask timerTaskObj = new TimerTask() {
                 public void run() {
-                    getLocation();
-                    if (stepslist!=null){
-                        countDistance();
-                    }
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            getLocation();
+                            if (stepslist != null){
+                                countDistance();
+                            }
+                        }
+                    });
                 }
             };
-            timerObj.schedule(timerTaskObj, 0,DELAY_PEROID);
+            timerObj.schedule(timerTaskObj, DELAY_PEROID, DELAY_PEROID);
         }
     }
 
@@ -142,21 +261,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Double currLng = Double.valueOf(longitude);
         Double crossLat = stepslist.get(indexNextTurn).getStart_location().getLat();
         Double crossLng = stepslist.get(indexNextTurn).getStart_location().getLng();
+        String maneuver = stepslist.get(indexNextTurn).getManeuver();
 
-        Double distance2point = Math.sqrt((Math.pow((crossLat-currLat),2)+Math.pow((crossLng-currLng),2)));
+        Double distance2point = Math.sqrt((Math.pow((crossLat-currLat),2) + Math.pow((crossLng-currLng),2)));
+        Double jarak = distance2point /0.000008;
 
-        Log.d("kirim",
+        Log.d("Send",
                 "ket : "+stepslist.get(indexNextTurn).getHtml_instructions()
                 +"\ncurrlat  : "+currLat
                 +"\ncurrlng  : "+currLng
                 +"\ncrosslat : "+crossLat
                 +"\ncrosslng : "+crossLng
+                +"\nmaneuver : "+maneuver
+                +"\ndistance : "+jarak
         );
 
-        if (distance2point<=0.000008*radius){
+        sendData(currLat +","+ currLng +","+ crossLat +","+ crossLng +","+ maneuver +","+ jarak +"#\n");
+
+        if (distance2point <= 0.000008 * radius){
             indexNextTurn++;
         }
-
     }
 
     private void getLocation() {
@@ -168,7 +292,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         } else {
 
-            Location location2 = locationManager.getLastKnownLocation(LocationManager. PASSIVE_PROVIDER);
+            Location location2 = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
             Location location1 = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             Location location = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
 
@@ -192,7 +316,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 longitude = String.valueOf(longi);
             }
             else{
-                Toast.makeText(this,"Unble to Trace your location",Toast.LENGTH_SHORT).show();
+                Toast.makeText(this,"Unable to trace your location.",Toast.LENGTH_SHORT).show();
             }
         }
     }

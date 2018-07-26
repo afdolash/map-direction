@@ -1,4 +1,4 @@
-package com.example.ngoctri.mapdirectionsample;
+package com.example.ngoctri.mapdirectionsample.utils;
 
 public class Steps {
     private EndLocation end_location;

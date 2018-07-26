@@ -1,13 +1,13 @@
-package com.example.ngoctri.mapdirectionsample;
+package com.example.ngoctri.mapdirectionsample.utils;
 
-public class EndLocation {
+public class StartLocation {
     private Double lat;
     private Double lng;
 
-    public EndLocation() {
+    public StartLocation() {
     }
 
-    public EndLocation(Double lat, Double lng) {
+    public StartLocation(Double lat, Double lng) {
         this.lat = lat;
         this.lng = lng;
     }

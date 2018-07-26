@@ -1,4 +1,4 @@
-package com.example.ngoctri.mapdirectionsample;
+package com.example.ngoctri.mapdirectionsample.utils;
 
 import android.util.Log;
 
