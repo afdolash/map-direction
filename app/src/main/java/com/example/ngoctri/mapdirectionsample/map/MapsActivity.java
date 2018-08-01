@@ -62,7 +62,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private static final int LOCATION_REQUEST = 500;
     private static final int REQUEST_LOCATION = 1;
-    private static final long DELAY_PEROID = 500;
+    private static final long DELAY_PEROID = 100;
 
     private GoogleMap mMap;
 
@@ -213,6 +213,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 if (listPoints.size() == 1) {
                     //Add first marker to the map
                     markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                    try {
+                        timerObj.cancel();
+                    } catch (Exception ex) {
+                        Log.e("Timer", "Timer was canceled");
+                    }
                 } else {
                     //Add second marker to the map
                     markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
@@ -264,7 +269,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         String maneuver = stepslist.get(indexNextTurn).getManeuver();
 
         Double distance2point = Math.sqrt((Math.pow((crossLat-currLat),2) + Math.pow((crossLng-currLng),2)));
-        Double jarak = distance2point /0.000008;
+        Double jarak = distance2point / 0.000008;
 
         Log.d("Send",
                 "ket : "+stepslist.get(indexNextTurn).getHtml_instructions()
@@ -276,7 +281,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 +"\ndistance : "+jarak
         );
 
-        sendData(currLat +","+ currLng +","+ crossLat +","+ crossLng +","+ maneuver +","+ jarak +"#\n");
+        sendData(maneuver +","+ jarak +"#\n");
 
         if (distance2point <= 0.000008 * radius){
             indexNextTurn++;
